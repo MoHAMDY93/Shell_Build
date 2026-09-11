@@ -87,8 +87,7 @@ int main() {
             tokens.push_back(curr_token);
         }
     
-        for (auto token : tokens) 
-            cout << '[' << token << "] ";
-        cout << '\n';
+        for (int i=0 ; i<tokens.size() ; i++) 
+            cout << '[' << tokens[i] << ']' << (i + 1 < tokens.size() ? ' ' : '\n');
     }
 }
