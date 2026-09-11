@@ -1,93 +1,50 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream>
+
 using namespace std;
 
-// TODO (tokenize): implement per the lesson description.
+string trim(const string& s) {
+    size_t first = s.find_first_not_of(" \t");
+    if (first == string::npos) return "";
+    size_t last = s.find_last_not_of(" \t");
+    return s.substr(first, (last - first + 1));
+}
 
-enum State {
-    NORMAL,
-    SINGLE_QUOTE,
-    DOUBLE_QUOTE
-};
 int main() {
     string line;
     while (getline(cin, line)) {
-        vector<string> tokens;
-        State state = NORMAL;
-        bool token_started = false , escaped = false;
-        string curr_token;
-        for (char c : line) {
-            switch (state) {
-            case NORMAL:
-                if (escaped) {
-                    curr_token.push_back(c);
-                    token_started = true;
-                    escaped = false;
-                }
-                else if (c == '\\') {
-                    escaped = true;
-                    token_started = true;
-                }
-                else if (c == ' ') {
-                    if (token_started) {
-                        tokens.push_back(curr_token);
-                        curr_token.clear();
-                        token_started = false;
-                    }
-                } 
-                else if (c == '>' || c == '<' || c == '|') {
-                    if (token_started) {
-                        tokens.push_back(curr_token);
-                        curr_token.clear();
-                        token_started = false;
-                    }
-                    tokens.push_back(string(1 , c));
-                } 
-                else if (c == '\'') {
-                    state = SINGLE_QUOTE;
-                    token_started = true;
-                } 
-                else if (c == '\"') {
-                    state = DOUBLE_QUOTE;
-                    token_started = true;
-                } 
-                else {
-                    curr_token.push_back(c);
-                    token_started = true;
-                }
+        if (line.empty()) continue;
+        vector<string> out;
+        stringstream ss(line);
+        string item;
+        bool bad = false;
+        while (getline(ss, item, '|')) {
+            string trimmed = trim(item);
+            if (trimmed.empty()) {
+                bad = true;
                 break;
-            
-            case SINGLE_QUOTE:
-                if (c == '\'') {
-                    state = NORMAL;
-                } else {
-                    curr_token.push_back(c);
-                }
-                break;
-            case DOUBLE_QUOTE:
-                if (escaped) {
-                    curr_token.push_back(c);
-                    token_started = true;
-                    escaped = false;
-                }
-                else if (c == '\\') {
-                    escaped = true;
-                }
-                else if (c == '\"') {
-                    state = NORMAL;
-                } 
-                else {
-                    curr_token.push_back(c);
-                }
+            }
+            out.push_back(trimmed);
+        }
+
+        if (!line.empty()) {
+            size_t last_non_space = line.find_last_not_of(" \t");
+            if (last_non_space != string::npos && line[last_non_space] == '|') {
+                bad = true;
             }
         }
-        if (state == SINGLE_QUOTE || state == DOUBLE_QUOTE) {
-            cout << "ERR unterminated quote\n";
-            return 0;
-        } else if (token_started) {
-            tokens.push_back(curr_token);
+
+        if (bad || out.empty()) {
+            cout << "ERR syntax error: empty command in pipeline\n";
+            continue;
         }
-    
-        for (int i=0 ; i<tokens.size() ; i++) 
-            cout << '[' << tokens[i] << ']' << (i + 1 < tokens.size() ? ' ' : '\n');
+
+        for (size_t i = 0; i < out.size(); ++i) {
+            cout << out[i] << (i + 1 < out.size() ? " | " : "");
+        }
+        cout << '\n';
     }
+    return 0;
 }
