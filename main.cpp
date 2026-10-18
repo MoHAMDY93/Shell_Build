@@ -1,6 +1,4 @@
 #include <bits/stdc++.h>
-// #include "Lessons/tokenizer/tokenizer.h"
-// #include "Lessons/parser/parser.h"
 
 using namespace std;
 
@@ -52,6 +50,7 @@ vector<Token> tokenize(const string& line) {
             else if (c == '\\') {
                 escaped = true;
                 token_started = true;
+                quoted = true; // A backslash acts as quotes for IO_NUMBER checks
             }
             else if (c == ' ' || c == '\t') {
                 if (token_started) {
@@ -63,7 +62,21 @@ vector<Token> tokenize(const string& line) {
             }
             else if (isOperatorChar(c)) {
                 if (token_started) {
-                    pushWord(tokens, curr_token);
+                    // Check if the immediately touching token is an IO_NUMBER
+                    bool is_io_number = false;
+                    if (!quoted && !curr_token.empty() &&
+                        all_of(curr_token.begin(), curr_token.end(), [](unsigned char ch) { return isdigit(ch); })) {
+                        if (c == '<' || c == '>') {
+                            is_io_number = true;
+                        }
+                    }
+
+                    if (is_io_number) {
+                        tokens.push_back({curr_token, TokenType::IO_NUMBER});
+                    } else {
+                        pushWord(tokens, curr_token);
+                    }
+
                     curr_token.clear();
                     token_started = false;
                     quoted = false;
@@ -136,7 +149,6 @@ vector<Token> tokenize(const string& line) {
     }
 
     if (escaped) {
-        // A trailing backslash is a syntax error in this simplified lexer.
         throw runtime_error("syntax error: trailing escape");
     }
 
@@ -146,33 +158,6 @@ vector<Token> tokenize(const string& line) {
 
     if (token_started) {
         pushWord(tokens, curr_token);
-    }
-
-    // Mark an unquoted, all-digit word as an IO number only when
-    // it touches a following redirection operator.
-    for (size_t i = 0; i + 1 < tokens.size(); ++i) {
-        if (tokens[i].type != TokenType::WORD ||
-            tokens[i + 1].type != TokenType::OPERATOR) {
-            continue;
-        }
-
-        const string& op = tokens[i + 1].value;
-        if (op != "<" && op != ">" && op != ">>" &&
-            op != "<<" && op != "<<-" && op != ">&" &&
-            op != "<&") {
-            continue;
-        }
-
-        const string& word = tokens[i].value;
-        bool digits = !word.empty() &&
-            all_of(word.begin(), word.end(), [](unsigned char ch) {
-                return isdigit(ch);
-            });
-
-        // Quoted numeric words must not become IO_NUMBER tokens.
-        if (digits) {
-            tokens[i].type = TokenType::IO_NUMBER;
-        }
     }
 
     return tokens;
@@ -291,8 +276,8 @@ SimpleCommand parse(const vector<Token>& tokens) {
 
             command.redirections.push_back({
                 fd,
-                token.value == ">&" ? ">" : token.value,
-                token.value == ">&" ? "&" + target.value : target.value
+                token.value,
+                target.value
             });
 
             // Consume the target so it isn't treated as an argument.
@@ -331,13 +316,9 @@ int main() {
         try {
             SimpleCommand command = parse(tokens);
 
-            cout << "argv=[";
-            for (size_t i = 0; i < command.args.size(); ++i) {
-                if (i != 0)
-                    cout << ", ";
-                cout << "'" << command.args[i] << "'";
-            }
-            cout << "]";
+            cout << "argv:";
+            for (const string& arg : command.args)
+                cout << " [" << arg << "]";
             cout << '\n';
 
             for (const Redirection& r : command.redirections) {
